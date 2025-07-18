@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from "firebase/storage";
+import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
 
 // IMPORTANT: Replace this with your actual Firebase project configuration
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -20,3 +21,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const appId = import.meta.env.VITE_FIREBASE_APP_ID;
+
+// Initialize the Gemini Developer API backend service
+const ai = getAI(app, { backend: new GoogleAIBackend() });
+
+// Create a `GenerativeModel` instance with a model that supports your use case
+export const model = getGenerativeModel(ai, { model: "gemini-1.5-flash" }); // Use a standard vision model

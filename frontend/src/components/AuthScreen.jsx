@@ -1,12 +1,18 @@
 import Icons from './Icons';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 export default function AuthScreen({ setUser }) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     const signInWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            if (isMobile) {
+                await signInWithRedirect(auth, provider);
+            } else {
+                await signInWithPopup(auth, provider);
+            }
             // onAuthStateChanged will handle the user state update
         } catch (error) {
             console.error("Error during sign-in:", error);
