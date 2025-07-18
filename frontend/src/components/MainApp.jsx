@@ -1,0 +1,181 @@
+import React, { useState, useEffect } from 'react';
+import { signOut } from 'firebase/auth';
+import { collection, onSnapshot, query, doc, deleteDoc, addDoc } from 'firebase/firestore';
+import { auth, db, appId } from '../firebase/config';
+import Icons from './Icons';
+import AddItemModal from './AddItemModal';
+import WardrobeItem from './WardrobeItem';
+
+const OutfitCard = ({ outfit, items }) => {
+    const outfitItems = outfit.itemIds.map(id => items.find(item => item.id === id)).filter(Boolean);
+
+    return (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-4 border-b">
+                <h3 className="font-bold text-gray-800">{outfit.name}</h3>
+            </div>
+            <div className="p-4 grid grid-cols-3 gap-2">
+                {outfitItems.slice(0, 6).map(item => (
+                    <img key={item.id} src={item.imageUrl} alt={item.name} className="w-full h-20 object-cover rounded-md" />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const MainApp = ({ user }) => {
+    const [activeTab, setActiveTab] = useState('closet');
+    const [items, setItems] = useState([]);
+    const [outfits, setOutfits] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [outfitName, setOutfitName] = useState('');
+
+    useEffect(() => {
+        if (!user) return;
+        setLoading(true);
+        const itemsCollectionPath = `artifacts/${appId}/users/${user.uid}/items`;
+        const outfitsCollectionPath = `artifacts/${appId}/users/${user.uid}/outfits`;
+
+        const unsubItems = onSnapshot(query(collection(db, itemsCollectionPath)), (snapshot) => {
+            setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setLoading(false);
+        });
+
+        const unsubOutfits = onSnapshot(query(collection(db, outfitsCollectionPath)), (snapshot) => {
+            setOutfits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+
+        return () => {
+            unsubItems();
+            unsubOutfits();
+        };
+    }, [user]);
+
+    const handleLogout = () => signOut(auth).catch(error => console.error("Error signing out: ", error));
+
+    const handleDeleteItem = async (itemId) => {
+        if (window.confirm("Are you sure you want to delete this item?")) {
+            const itemDocPath = `artifacts/${appId}/users/${user.uid}/items/${itemId}`;
+            await deleteDoc(doc(db, itemDocPath));
+        }
+    };
+
+    const handleSelectItem = (itemId) => {
+        setSelectedItems(prev =>
+            prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+        );
+    };
+
+    const handleSaveOutfit = async () => {
+        if (selectedItems.length < 2 || !outfitName.trim()) {
+            alert("Please select at least 2 items and provide a name for the outfit.");
+            return;
+        }
+        const outfitsCollectionPath = `artifacts/${appId}/users/${user.uid}/outfits`;
+        await addDoc(collection(db, outfitsCollectionPath), {
+            name: outfitName,
+            itemIds: selectedItems,
+            createdAt: new Date(),
+        });
+        // Reset state
+        setOutfitName('');
+        setSelectedItems([]);
+        setIsSelectMode(false);
+    };
+
+    const renderCloset = () => (
+        <>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-gray-800">My Closet</h2>
+                <div className="flex items-center gap-4">
+                    <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedItems([]); }} className={`py-2 px-4 rounded-lg font-semibold ${isSelectMode ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200'}`}>
+                        {isSelectMode ? 'Cancel' : 'Select Items'}
+                    </button>
+                    <button onClick={() => setShowModal(true)} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex items-center gap-2">
+                        {Icons.add} Add Item
+                    </button>
+                </div>
+            </div>
+            {loading ? <p>Loading...</p> : items.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {items.map(item => (
+                        <WardrobeItem key={item.id} item={item} onDelete={handleDeleteItem} isSelectMode={isSelectMode} onSelectItem={handleSelectItem} isSelected={selectedItems.includes(item.id)} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-20 bg-white rounded-lg shadow">
+                    <div className="text-gray-400 mx-auto w-16 h-16">{Icons.shirt}</div>
+                    <h3 className="mt-4 text-xl font-semibold text-gray-800">Your Closet is Empty</h3>
+                    <p className="mt-1 text-gray-500">Click "Add Item" to start building your digital wardrobe.</p>
+                </div>
+            )}
+        </>
+    );
+
+    const renderOutfits = () => (
+        <>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">My Outfits</h2>
+            {outfits.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {outfits.map(outfit => (
+                        <OutfitCard key={outfit.id} outfit={outfit} items={items} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-20 bg-white rounded-lg shadow">
+                    <div className="text-gray-400 mx-auto w-16 h-16">{Icons.sparkles}</div>
+                    <h3 className="mt-4 text-xl font-semibold text-gray-800">No Outfits Yet</h3>
+                    <p className="mt-1 text-gray-500">Go to your closet, select items, and create your first outfit!</p>
+                </div>
+            )}
+        </>
+    );
+
+    return (
+        <div className="min-h-screen bg-gray-100">
+            <header className="bg-white shadow-sm sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <div className="text-indigo-600">{Icons.hanger}</div>
+                        <h1 className="text-2xl font-bold text-gray-900">Placard</h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full" />
+                        <button onClick={handleLogout} className="text-gray-500 hover:text-gray-700">{Icons.logout}</button>
+                    </div>
+                </div>
+            </header>
+            
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-6 border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button onClick={() => setActiveTab('closet')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'closet' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            My Closet
+                        </button>
+                        <button onClick={() => setActiveTab('outfits')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'outfits' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            Outfits
+                        </button>
+                    </nav>
+                </div>
+                {activeTab === 'closet' ? renderCloset() : renderOutfits()}
+            </main>
+
+            {isSelectMode && selectedItems.length > 0 && (
+                <footer className="sticky bottom-0 bg-white shadow-lg border-t p-4 z-40">
+                    <div className="max-w-7xl mx-auto flex items-center gap-4">
+                        <p className="font-semibold">{selectedItems.length} items selected</p>
+                        <input type="text" value={outfitName} onChange={e => setOutfitName(e.target.value)} placeholder="Name your outfit..." className="flex-grow rounded-md border-gray-300 shadow-sm p-2" />
+                        <button onClick={handleSaveOutfit} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700">Save Outfit</button>
+                    </div>
+                </footer>
+            )}
+
+            {showModal && <AddItemModal setShowModal={setShowModal} userId={user.uid} />}
+        </div>
+    );
+};
+
+export default MainApp;
