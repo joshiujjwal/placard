@@ -1,28 +1,34 @@
 import Icons from './Icons';
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { useState } from 'react';
 
-export default function AuthScreen({ setUser }) {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+export default function AuthScreen() {
+    const [loading, setLoading] = useState(false);
+    
+    // More reliable mobile detection
+    const isMobile = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
+    };
 
     const signInWithGoogle = async () => {
+        setLoading(true);
         const provider = new GoogleAuthProvider();
+        
         try {
-            if (isMobile) {
-                await signInWithRedirect(auth, provider);
-            } else {
+            if (isMobile()) {
+                console.log('Using redirect for mobile');
                 await signInWithPopup(auth, provider);
+                // Don't set loading to false here - page will redirect
+            } else {
+                console.log('Using popup for desktop');
+                await signInWithPopup(auth, provider);
+                setLoading(false);
             }
-            // onAuthStateChanged will handle the user state update
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    setUser(user);
-                } else {
-                    setUser(null);
-                }
-            });
         } catch (error) {
             console.error("Error during sign-in:", error);
+            setLoading(false);
         }
     };
 
@@ -37,13 +43,18 @@ export default function AuthScreen({ setUser }) {
                 <div className="mt-8">
                     <button
                         onClick={signInWithGoogle}
-                        className="w-full inline-flex justify-center items-center gap-3 bg-white text-gray-700 font-semibold py-3 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 transition-colors"
+                        disabled={loading}
+                        className="w-full inline-flex justify-center items-center gap-3 bg-white text-gray-700 font-semibold py-3 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 transition-colors disabled:opacity-50"
                     >
-                        {Icons.google}
-                        Sign in with Google
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                        ) : (
+                            Icons.google
+                        )}
+                        {loading ? 'Signing in...' : 'Sign in with Google'}
                     </button>
                 </div>
             </div>
         </div>
     );
-};
+}
