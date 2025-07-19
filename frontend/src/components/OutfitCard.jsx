@@ -1,6 +1,14 @@
 import React from 'react';
 import Icons from './Icons';
 
+// Helper function to get image source
+const getImageSource = (item) => {
+    if (item.imageBase64) {
+        return `data:image/jpeg;base64,${item.imageBase64}`;
+    }
+    return item.imageUrl || '';
+};
+
 export default function OutfitCard({ outfit, items, onDelete }) {
     const outfitItems = outfit.itemIds.map(id => items.find(item => item.id === id)).filter(Boolean);
     const unavailableItems = outfitItems.filter(item => !item.isAvailable);
@@ -30,7 +38,7 @@ export default function OutfitCard({ outfit, items, onDelete }) {
                 {outfitItems.slice(0, 6).map(item => (
                     <div key={item.id} className="relative">
                         <img 
-                            src={item.imageUrl} 
+                            src={getImageSource(item)} 
                             alt={item.name} 
                             className={`w-full h-20 object-cover rounded-md ${!item.isAvailable ? 'grayscale opacity-60' : ''}`} 
                         />
@@ -39,4 +47,4 @@ export default function OutfitCard({ outfit, items, onDelete }) {
             </div>
         </div>
     );
-};
+}

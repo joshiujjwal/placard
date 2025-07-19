@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { storage, db, appId } from '../firebase/config';
+import { db, appId } from '../firebase/config';
+
+// Helper function to convert file to base64
+const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            // Get the base64 string without the data URL prefix
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 export default function UserProfile({ user }) {
-    const [faceImage, setFaceImage] = useState(null);
     const [bodyImage, setBodyImage] = useState(null);
-    const [faceImageUrl, setFaceImageUrl] = useState('');
-    const [bodyImageUrl, setBodyImageUrl] = useState('');
+    const [bodyImageBase64, setBodyImageBase64] = useState('');
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
 
@@ -21,8 +32,7 @@ export default function UserProfile({ user }) {
             
             if (userProfileDoc.exists()) {
                 const data = userProfileDoc.data();
-                setFaceImageUrl(data.faceImageUrl || '');
-                setBodyImageUrl(data.bodyImageUrl || '');
+                setBodyImageBase64(data.bodyImageBase64 || '');
             }
         } catch (error) {
             console.error('Error loading user profile:', error);
@@ -35,34 +45,23 @@ export default function UserProfile({ user }) {
         loadUserProfile();
     }, [loadUserProfile]);
 
-    const uploadImage = async (file, type) => {
+    const uploadImage = async (file) => {
         if (!file || !user) return;
         
         setUploading(true);
         try {
-            const fileExtension = file.name.split('.').pop();
-            const fileName = `${type}_${user.uid}_${Date.now()}.${fileExtension}`;
-            const storageRef = ref(storage, `user-profiles/${user.uid}/${fileName}`);
+            // Convert file to base64
+            const base64 = await fileToBase64(file);
             
-            await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(storageRef);
-            
-            // Save to Firestore
+            // Save base64 to Firestore
             const userProfileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile`, 'images');
-            const updateData = type === 'face' 
-                ? { faceImageUrl: downloadURL }
-                : { bodyImageUrl: downloadURL };
+            const updateData = { bodyImageBase64: base64 };
             
             await setDoc(userProfileRef, updateData, { merge: true });
             
             // Update local state
-            if (type === 'face') {
-                setFaceImageUrl(downloadURL);
-                setFaceImage(null);
-            } else {
-                setBodyImageUrl(downloadURL);
-                setBodyImage(null);
-            }
+            setBodyImageBase64(base64);
+            setBodyImage(null);
             
         } catch (error) {
             console.error('Error uploading image:', error);
@@ -72,29 +71,23 @@ export default function UserProfile({ user }) {
         }
     };
 
-    const deleteImage = async (type) => {
+    const deleteImage = async () => {
         if (!user) return;
         
         try {
             const userProfileRef = doc(db, `artifacts/${appId}/users/${user.uid}/profile`, 'images');
-            const updateData = type === 'face' 
-                ? { faceImageUrl: '' }
-                : { bodyImageUrl: '' };
+            const updateData = { bodyImageBase64: '' };
             
             await setDoc(userProfileRef, updateData, { merge: true });
             
-            if (type === 'face') {
-                setFaceImageUrl('');
-            } else {
-                setBodyImageUrl('');
-            }
+            setBodyImageBase64('');
         } catch (error) {
             console.error('Error deleting image:', error);
             alert('Failed to delete image. Please try again.');
         }
     };
 
-    const handleFileChange = (e, type) => {
+    const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -108,12 +101,13 @@ export default function UserProfile({ user }) {
                 return;
             }
             
-            if (type === 'face') {
-                setFaceImage(file);
-            } else {
-                setBodyImage(file);
-            }
+            setBodyImage(file);
         }
+    };
+
+    // Helper function to get data URL for display
+    const getDataUrl = (base64) => {
+        return base64 ? `data:image/jpeg;base64,${base64}` : '';
     };
 
     if (loading) {
@@ -129,89 +123,35 @@ export default function UserProfile({ user }) {
             <div className="bg-white rounded-lg shadow-lg p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">User Profile</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Face Image Section */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Face Image</h3>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                            {faceImageUrl ? (
-                                <div className="space-y-4">
-                                    <img 
-                                        src={faceImageUrl} 
-                                        alt="Face" 
-                                        className="w-32 h-32 mx-auto rounded-full object-cover border-4 border-gray-200"
-                                    />
-                                    <div className="flex gap-2 justify-center">
-                                        <button
-                                            onClick={() => deleteImage('face')}
-                                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="w-32 h-32 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                                        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <label className="cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={(e) => handleFileChange(e, 'face')}
-                                                className="hidden"
-                                            />
-                                            <span className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
-                                                Upload Face Image
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        {faceImage && (
-                            <div className="text-center">
-                                <p className="text-sm text-gray-600 mb-2">Ready to upload: {faceImage.name}</p>
-                                <button
-                                    onClick={() => uploadImage(faceImage, 'face')}
-                                    disabled={uploading}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                                >
-                                    {uploading ? 'Uploading...' : 'Upload Face Image'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
+                <div className="max-w-md mx-auto">
                     {/* Full Body Image Section */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Full Body Image</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">Full Body Photo</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Upload a full body photo to use with virtual try-on features. 
+                            This photo will be used to visualize how outfits look on you.
+                        </p>
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                            {bodyImageUrl ? (
+                            {bodyImageBase64 ? (
                                 <div className="space-y-4">
                                     <img 
-                                        src={bodyImageUrl} 
+                                        src={getDataUrl(bodyImageBase64)} 
                                         alt="Full Body" 
-                                        className="w-32 h-48 mx-auto rounded-lg object-cover border-4 border-gray-200"
+                                        className="w-48 h-64 mx-auto rounded-lg object-cover border-4 border-gray-200"
                                     />
                                     <div className="flex gap-2 justify-center">
                                         <button
-                                            onClick={() => deleteImage('body')}
+                                            onClick={deleteImage}
                                             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                                         >
-                                            Remove
+                                            Remove Photo
                                         </button>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="w-32 h-48 mx-auto bg-gray-100 rounded-lg flex items-center justify-center">
-                                        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-48 h-64 mx-auto bg-gray-100 rounded-lg flex items-center justify-center">
+                                        <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
                                     </div>
@@ -220,11 +160,11 @@ export default function UserProfile({ user }) {
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={(e) => handleFileChange(e, 'body')}
+                                                onChange={handleFileChange}
                                                 className="hidden"
                                             />
                                             <span className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
-                                                Upload Body Image
+                                                Upload Full Body Photo
                                             </span>
                                         </label>
                                     </div>
@@ -236,11 +176,11 @@ export default function UserProfile({ user }) {
                             <div className="text-center">
                                 <p className="text-sm text-gray-600 mb-2">Ready to upload: {bodyImage.name}</p>
                                 <button
-                                    onClick={() => uploadImage(bodyImage, 'body')}
+                                    onClick={() => uploadImage(bodyImage)}
                                     disabled={uploading}
                                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
                                 >
-                                    {uploading ? 'Uploading...' : 'Upload Body Image'}
+                                    {uploading ? 'Uploading...' : 'Upload Photo'}
                                 </button>
                             </div>
                         )}
@@ -248,12 +188,13 @@ export default function UserProfile({ user }) {
                 </div>
 
                 <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">Tips for best results:</h4>
+                    <h4 className="font-semibold text-blue-900 mb-2">Tips for best virtual try-on results:</h4>
                     <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Use clear, well-lit photos</li>
-                        <li>• Face image should be a close-up headshot</li>
-                        <li>• Body image should show your full figure from head to toe</li>
-                        <li>• Wear form-fitting clothes for the body image</li>
+                        <li>• Use a clear, well-lit full body photo</li>
+                        <li>• Photo should show your full figure from head to toe</li>
+                        <li>• Wear form-fitting clothes or a neutral outfit</li>
+                        <li>• Stand in a natural pose with arms slightly away from body</li>
+                        <li>• Use a plain background for best results</li>
                         <li>• Maximum file size: 5MB</li>
                     </ul>
                 </div>

@@ -31,4 +31,7 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 
 // Create a `GenerativeModel` instance with a model that supports your use case
-export const model = getGenerativeModel(ai, { model: "gemini-1.5-flash" }); // Use a standard vision model
+export const model = getGenerativeModel(ai, { model: "gemini-2.0-flash-exp-image-generation" }); // Use image generation model for virtual try-on
+
+// Fallback model for regular vision tasks (if image generation model is not available)
+export const visionModel = getGenerativeModel(ai, { model: "gemini-1.5-flash" });

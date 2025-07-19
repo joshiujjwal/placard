@@ -1,6 +1,14 @@
 import React from 'react';
 import Icons from './Icons';
 
+// Helper function to get image source
+const getImageSource = (item) => {
+    if (item.imageBase64) {
+        return `data:image/jpeg;base64,${item.imageBase64}`;
+    }
+    return item.imageUrl || '';
+};
+
 const WardrobeItem = ({ item, onDelete, onToggleAvailability, isSelectMode, onSelectItem, isSelected }) => {
     const handleClick = () => {
         if (isSelectMode) {
@@ -10,7 +18,7 @@ const WardrobeItem = ({ item, onDelete, onToggleAvailability, isSelectMode, onSe
 
     return (
         <div className={`bg-white rounded-lg shadow-md overflow-hidden group relative transition-all duration-200 ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-4 ring-indigo-500' : ''} ${!item.isAvailable ? 'opacity-60' : ''}`} onClick={handleClick}>
-            <img src={item.imageUrl} alt={item.name} className={`w-full h-48 object-cover ${!item.isAvailable ? 'grayscale' : ''}`} />
+            <img src={getImageSource(item)} alt={item.name} className={`w-full h-48 object-cover ${!item.isAvailable ? 'grayscale' : ''}`} />
             {isSelected && (
                 <div className="absolute top-2 right-2 bg-indigo-600 text-white rounded-full p-1">
                     <div className="w-4 h-4">{Icons.check}</div>

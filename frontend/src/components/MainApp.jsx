@@ -6,6 +6,7 @@ import AddItemModal from './AddItemModal';
 import MyWardrobe from './MyWardrobe';
 import Outfits from './Outfits';
 import UserProfile from './UserProfile';
+import VirtualTryOn from './VirtualTryOn';
 
 export default function MainApp({ user }) {
     const [activeTab, setActiveTab] = useState('closet');
@@ -113,6 +114,10 @@ export default function MainApp({ user }) {
         <UserProfile user={user} />
     );
 
+    const renderVirtualTryOn = () => (
+        <VirtualTryOn user={user} outfits={outfits} items={items} />
+    );
+
     return (
         <div className="min-h-screen bg-gray-100">
             <header className="bg-white shadow-sm sticky top-0 z-40">
@@ -131,11 +136,13 @@ export default function MainApp({ user }) {
                     <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                          <button onClick={() => setActiveTab('closet')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'closet' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>My Closet</button>
                         <button onClick={() => setActiveTab('outfits')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'outfits' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Outfits</button>
+                        <button onClick={() => setActiveTab('virtual-tryon')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'virtual-tryon' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Virtual Try-On</button>
                         <button onClick={() => setActiveTab('profile')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'profile' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Profile</button>
                     </nav>
                 </div>
                 {activeTab === 'closet' && renderCloset()}
                 {activeTab === 'outfits' && renderOutfits()}
+                {activeTab === 'virtual-tryon' && renderVirtualTryOn()}
                 {activeTab === 'profile' && renderProfile()}
             </main>
             {isSelectMode && selectedItems.length > 0 && (

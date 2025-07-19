@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { addDoc, collection } from 'firebase/firestore';
-import { storage, db, appId, model } from '../firebase/config';
+import { db, appId, model } from '../firebase/config';
 import Icons from './Icons';
 import Spinner from './Spinner';
 
@@ -20,7 +19,6 @@ function parseAIResponse(responseText) {
     // Parse as JSON
     return JSON.parse(cleaned);
 }
-
 
 // --- Main Refactored Component ---
 
@@ -41,7 +39,6 @@ const AddItemModal = ({ setShowModal, userId }) => {
     
     // Submission state
     const [isSubmitting, setIsSubmitting] = useState(false);
-
 
     // Effect to update item name when AI results change
     useEffect(() => {
@@ -116,9 +113,8 @@ const AddItemModal = ({ setShowModal, userId }) => {
         setIsSubmitting(true);
 
         try {
-            const storageRef = ref(storage, `placard/${appId}/${userId}/${imageFile.name}_${Date.now()}`);
-            const snapshot = await uploadBytes(storageRef, imageFile);
-            const imageUrl = await getDownloadURL(snapshot.ref);
+            // Convert image to base64 and save directly to Firestore
+            const imageBase64 = await toBase64(imageFile);
 
             const itemsCollectionPath = `artifacts/${appId}/users/${userId}/items`;
             await addDoc(collection(db, itemsCollectionPath), {
@@ -128,7 +124,7 @@ const AddItemModal = ({ setShowModal, userId }) => {
                 material: material || null, // Store material as null if empty
                 occasion: occasion || null, // Store occasion as null if empty
                 isAvailable: isAvailable,
-                imageUrl,
+                imageBase64, // Store base64 instead of imageUrl
                 createdAt: new Date(),
             });
 
