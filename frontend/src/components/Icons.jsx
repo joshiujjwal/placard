@@ -8,6 +8,7 @@ const Icons = {
     check: <i className="fa-solid fa-check-circle"></i>,
     sparkles: <i className="fa-solid fa-wand-magic-sparkles"></i>,
     search: <i className="fa-solid fa-magnifying-glass"></i>,
+    user: <i className="fa-solid fa-user"></i>,
 };
 
 export default Icons;

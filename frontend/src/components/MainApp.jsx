@@ -5,6 +5,7 @@ import { auth, db, appId } from '../firebase/config';
 import AddItemModal from './AddItemModal';
 import MyWardrobe from './MyWardrobe';
 import Outfits from './Outfits';
+import UserProfile from './UserProfile';
 
 export default function MainApp({ user }) {
     const [activeTab, setActiveTab] = useState('closet');
@@ -104,7 +105,12 @@ export default function MainApp({ user }) {
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             onDeleteOutfit={handleDeleteOutfit}
+            user={user}
         />
+    );
+
+    const renderProfile = () => (
+        <UserProfile user={user} />
     );
 
     return (
@@ -125,9 +131,12 @@ export default function MainApp({ user }) {
                     <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                          <button onClick={() => setActiveTab('closet')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'closet' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>My Closet</button>
                         <button onClick={() => setActiveTab('outfits')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'outfits' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Outfits</button>
+                        <button onClick={() => setActiveTab('profile')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'profile' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Profile</button>
                     </nav>
                 </div>
-                {activeTab === 'closet' ? renderCloset() : renderOutfits()}
+                {activeTab === 'closet' && renderCloset()}
+                {activeTab === 'outfits' && renderOutfits()}
+                {activeTab === 'profile' && renderProfile()}
             </main>
             {isSelectMode && selectedItems.length > 0 && (
                 <footer className="sticky bottom-0 bg-white shadow-lg border-t p-4 z-40">

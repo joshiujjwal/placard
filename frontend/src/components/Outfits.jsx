@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Icons from './Icons';
 import OutfitCard from './OutfitCard';
 
-export default function Outfits({ outfits, items, searchTerm, setSearchTerm, onDeleteOutfit }) {
+export default function Outfits({ outfits, items, searchTerm, setSearchTerm, onDeleteOutfit, user }) {
     const [occasionFilter, setOccasionFilter] = useState('');
     const [showUnavailable, setShowUnavailable] = useState(true);
     
@@ -105,7 +105,15 @@ export default function Outfits({ outfits, items, searchTerm, setSearchTerm, onD
             </div>
             {filteredOutfits.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredOutfits.map(outfit => <OutfitCard key={outfit.id} outfit={outfit} items={items} onDelete={onDeleteOutfit} />)}
+                    {filteredOutfits.map(outfit => (
+                        <OutfitCard 
+                            key={outfit.id} 
+                            outfit={outfit} 
+                            items={items} 
+                            onDelete={onDeleteOutfit}
+                            user={user}
+                        />
+                    ))}
                 </div>
             ) : (
                 <div className="text-center py-20 bg-white rounded-lg shadow">
