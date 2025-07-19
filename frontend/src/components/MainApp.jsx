@@ -35,8 +35,6 @@ export default function MainApp({ user }) {
         return () => { unsubItems(); unsubOutfits(); };
     }, [user]);
 
-    const handleLogout = () => signOut(auth).catch(error => console.error("Error signing out: ", error));
-
     const handleDeleteItem = async (itemId) => {
         if (window.confirm("Are you sure you want to delete this item?")) {
             const itemDocPath = `artifacts/${appId}/users/${user.uid}/items/${itemId}`;
@@ -80,19 +78,9 @@ export default function MainApp({ user }) {
         setIsSelectMode(false);
     };
 
-    const filteredOutfits = outfits.filter(outfit => {
-        const term = searchTerm.toLowerCase();
-        const outfitNameMatch = outfit.name.toLowerCase().includes(term);
-        const itemMatch = outfit.itemIds.some(itemId => {
-            const item = items.find(i => i.id === itemId);
-            return item && (
-                item.name.toLowerCase().includes(term) ||
-                item.category.toLowerCase().includes(term) ||
-                item.color.toLowerCase().includes(term)
-            );
-        });
-        return outfitNameMatch || itemMatch;
-    });
+    const handleLogout = () => {
+        signOut(auth).catch(error => console.error("Error signing out: ", error));
+    };
 
     const renderCloset = () => (
         <MyWardrobe
@@ -122,7 +110,15 @@ export default function MainApp({ user }) {
     return (
         <div className="min-h-screen bg-gray-100">
             <header className="bg-white shadow-sm sticky top-0 z-40">
-                {/* Header JSX */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-gray-900">Placard</h1>
+                    <button
+                        onClick={handleLogout}
+                        className="text-gray-600 hover:text-gray-900 font-medium"
+                    >
+                        Sign Out
+                    </button>
+                </div>
             </header>
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6 border-b border-gray-200">

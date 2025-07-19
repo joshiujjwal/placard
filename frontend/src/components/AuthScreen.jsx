@@ -1,5 +1,5 @@
 import Icons from './Icons';
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 export default function AuthScreen({ setUser }) {
@@ -14,6 +14,13 @@ export default function AuthScreen({ setUser }) {
                 await signInWithPopup(auth, provider);
             }
             // onAuthStateChanged will handle the user state update
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    setUser(user);
+                } else {
+                    setUser(null);
+                }
+            });
         } catch (error) {
             console.error("Error during sign-in:", error);
         }
