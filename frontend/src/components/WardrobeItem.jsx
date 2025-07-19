@@ -9,21 +9,45 @@ const getImageSource = (item) => {
     return item.imageUrl || '';
 };
 
-const WardrobeItem = ({ item, onDelete, onToggleAvailability, isSelectMode, onSelectItem, isSelected }) => {
+const WardrobeItem = ({ item, onDelete, onToggleAvailability, isSelectMode, onSelectItem, isSelected, isCategorySelected }) => {
     const handleClick = () => {
-        if (isSelectMode) {
+        if (isSelectMode && !isCategorySelected) {
             onSelectItem(item.id);
         }
     };
 
     return (
-        <div className={`bg-white rounded-lg shadow-md overflow-hidden group relative transition-all duration-200 ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-4 ring-indigo-500' : ''} ${!item.isAvailable ? 'opacity-60' : ''}`} onClick={handleClick}>
-            <img src={getImageSource(item)} alt={item.name} className={`w-full h-48 object-cover ${!item.isAvailable ? 'grayscale' : ''}`} />
+        <div 
+            className={`
+                bg-white rounded-lg shadow-md overflow-hidden group relative transition-all duration-300 
+                ${isSelectMode && !isCategorySelected ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : ''} 
+                ${isSelected ? 'ring-4 ring-indigo-500 shadow-xl scale-105' : ''} 
+                ${!item.isAvailable ? 'opacity-60' : ''}
+                ${isSelectMode && !isSelected && !isCategorySelected ? 'hover:ring-2 hover:ring-indigo-300' : ''}
+                ${isCategorySelected ? 'opacity-50 cursor-not-allowed' : ''}
+            `} 
+            onClick={handleClick}
+        >
+            <img src={getImageSource(item)} alt={item.name} className={`w-full h-48 object-cover transition-all duration-300 ${!item.isAvailable ? 'grayscale' : ''}`} />
+            
             {isSelected && (
-                <div className="absolute top-2 right-2 bg-indigo-600 text-white rounded-full p-1">
+                <div className="absolute top-2 right-2 bg-indigo-600 text-white rounded-full p-1 animate-pulse">
                     <div className="w-4 h-4">{Icons.check}</div>
                 </div>
             )}
+            
+            {isSelectMode && !isSelected && !isCategorySelected && (
+                <div className="absolute top-2 right-2 bg-white bg-opacity-80 text-indigo-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="w-4 h-4">+</div>
+                </div>
+            )}
+            
+            {isCategorySelected && (
+                <div className="absolute top-2 right-2 bg-gray-400 text-white rounded-full p-1">
+                    <div className="w-4 h-4">🚫</div>
+                </div>
+            )}
+            
             <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
                     <h3 className="font-bold text-gray-800 truncate">{item.name}</h3>
@@ -40,6 +64,7 @@ const WardrobeItem = ({ item, onDelete, onToggleAvailability, isSelectMode, onSe
                     </span>
                 )}
             </div>
+            
             {!isSelectMode && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                     <button 

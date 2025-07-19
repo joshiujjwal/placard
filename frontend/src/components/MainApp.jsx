@@ -50,9 +50,29 @@ export default function MainApp({ user }) {
     };
 
     const handleSelectItem = (itemId) => {
-        setSelectedItems(prev =>
-            prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
-        );
+        const itemToSelect = items.find(item => item.id === itemId);
+        if (!itemToSelect) return;
+
+        setSelectedItems(prev => {
+            // If item is already selected, remove it
+            if (prev.includes(itemId)) {
+                return prev.filter(id => id !== itemId);
+            }
+            
+            // Check if there's already an item of the same category selected
+            const existingItemOfSameCategory = prev.find(selectedId => {
+                const selectedItem = items.find(item => item.id === selectedId);
+                return selectedItem && selectedItem.category === itemToSelect.category;
+            });
+            
+            if (existingItemOfSameCategory) {
+                // Replace the existing item of the same category
+                return prev.map(id => id === existingItemOfSameCategory ? itemId : id);
+            } else {
+                // Add the new item
+                return [...prev, itemId];
+            }
+        });
     };
 
     const handleDeleteOutfit = async (outfitId) => {

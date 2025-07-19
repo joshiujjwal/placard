@@ -102,6 +102,7 @@ export default function VirtualTryOn({ user, outfits, items }) {
                             reader.readAsDataURL(blob);
                         });
                     } catch (fetchError) {
+                        console.error('Error fetching image:', fetchError);
                         throw new Error(`Unable to access image for ${item.name}. Please try a different outfit or contact support.`);
                     }
                 } else {
@@ -111,18 +112,86 @@ export default function VirtualTryOn({ user, outfits, items }) {
                 clothingImagesBase64.push(itemBase64);
             }
 
-            // Create a clear, direct prompt for image generation
-            const itemNames = outfitItems.map(item => item.name).join(', ');
-            const imagePrompt = `Generate a photorealistic virtual try-on image. 
+            // Create detailed outfit information for the prompt
+            const outfitDetails = outfitItems.map(item => ({
+                name: item.name,
+                category: item.category,
+                color: item.color,
+                material: item.material || 'unknown',
+                occasion: item.occasion || 'general'
+            }));
 
-Take the person from the first image and dress them in these clothing items: ${itemNames}.
+            // Group items by category for better layering instructions
+            const itemsByCategory = outfitDetails.reduce((acc, item) => {
+                if (!acc[item.category]) {
+                    acc[item.category] = [];
+                }
+                acc[item.category].push(item);
+                return acc;
+            }, {});
 
-Requirements:
-- Keep the person's face, body shape, and pose exactly the same
-- Apply each clothing item to the correct body part with realistic fit
-- Layer items properly (tops over bottoms, etc.)
-- Create a new, professional background
-- Make the result look like a high-quality fashion photo
+            // Create category-specific layering instructions
+            const layeringInstructions = [];
+            if (itemsByCategory['Bottom']) {
+                layeringInstructions.push(`- Apply ${itemsByCategory['Bottom'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} to the lower body`);
+            }
+            if (itemsByCategory['Top']) {
+                layeringInstructions.push(`- Apply ${itemsByCategory['Top'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} to the upper body`);
+            }
+            if (itemsByCategory['Outerwear']) {
+                layeringInstructions.push(`- Layer ${itemsByCategory['Outerwear'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} over the top items`);
+            }
+            if (itemsByCategory['Dress']) {
+                layeringInstructions.push(`- Apply ${itemsByCategory['Dress'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} as a complete outfit`);
+            }
+            if (itemsByCategory['Shoes']) {
+                layeringInstructions.push(`- Apply ${itemsByCategory['Shoes'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} to the feet`);
+            }
+            if (itemsByCategory['Accessory']) {
+                layeringInstructions.push(`- Add ${itemsByCategory['Accessory'].map(item => `${item.name} (${item.color} ${item.material})`).join(' and ')} as accessories`);
+            }
+
+            // Create a comprehensive prompt with detailed item information
+            const imagePrompt = `Generate a photorealistic virtual try-on image.
+
+OUTFIT DETAILS:
+${outfitDetails.map(item => `- ${item.name}: ${item.category} (${item.color} ${item.material})`).join('\n')}
+
+LAYERING INSTRUCTIONS:
+${layeringInstructions.join('\n')}
+
+CRITICAL REQUIREMENTS:
+- Use ONLY the person from the first image (user profile) - ignore any faces or bodies in the clothing item images
+- Keep the person's face, body shape, and pose EXACTLY the same as in the first image
+- Maintain the EXACT same background, lighting, shadows, and overall composition as the input image
+- Do NOT change the background, environment, or lighting conditions
+- Do NOT modify the person's facial features, hair, or body proportions
+- Do NOT use any faces, bodies, or people from the clothing item images - only use the clothing itself
+- Extract only the clothing fabric, color, and texture from item images, discard any human elements
+- COMPLETELY REPLACE all existing clothing in the user profile image with the outfit items:
+  * If outfit has a Top item: replace any existing top/shirt in the profile image
+  * If outfit has a Bottom item: replace any existing pants/shorts/skirt in the profile image
+  * If outfit has Outerwear: layer over any existing top items
+  * If outfit has a Dress: replace all existing clothing with the dress
+  * If outfit has Shoes: replace any existing footwear
+  * If outfit has Accessories: add to appropriate body parts
+- Do NOT keep any original clothing from the profile image - replace everything with the new outfit
+- Apply each clothing item to the correct body part based on its category:
+  * Top items: upper body (chest, arms, shoulders) - replace existing tops
+  * Bottom items: lower body (waist, hips, legs) - replace existing bottoms
+  * Outerwear: layer over top items
+  * Dress: apply as complete one-piece outfit, replacing all other clothing
+  * Shoes: apply to feet/ankles - replace existing footwear
+  * Accessories: add to appropriate body parts (head, neck, wrists, etc.)
+- Maintain the exact color, texture, and material appearance of each item
+- Layer items properly (bottoms under tops, outerwear over tops)
+- Ensure realistic fit and drape for each clothing item
+- The final image should look like the original photo with only the clothing completely replaced
+
+IMPORTANT: 
+- The person in the final image must be exactly the same as the person in the first image (user profile)
+- Do not use any human elements from the clothing item images
+- Completely replace all existing clothing in the profile image with the new outfit items
 
 Return only the generated image, no text description.`;
 
@@ -138,7 +207,7 @@ Return only the generated image, no text description.`;
             ];
 
             // Add all clothing images to the request
-            clothingImagesBase64.forEach((base64, index) => {
+            clothingImagesBase64.forEach((base64) => {
                 requestParts.push({
                     inlineData: {
                         mimeType: "image/jpeg",
@@ -167,8 +236,27 @@ Return only the generated image, no text description.`;
             } catch (modelError) {
                 console.warn('Image generation model failed, trying fallback model:', modelError);
                 // If image generation model fails, try with the regular vision model
+                const fallbackPrompt = `Generate a virtual try-on image by combining the person from the first image with the clothing items from this outfit.
+
+OUTFIT ITEMS:
+${outfitDetails.map(item => `- ${item.name} (${item.category}): ${item.color} ${item.material}`).join('\n')}
+
+CRITICAL: 
+- Use ONLY the person from the first image (user profile) - ignore any faces or bodies in clothing images
+- Keep the EXACT same background, lighting, and composition as the input image
+- COMPLETELY REPLACE all existing clothing in the profile image with the outfit items
+- Do NOT keep any original clothing from the profile image
+- Only change the clothing - do not modify the person's face, body, or the environment
+- Extract only clothing fabric, color, and texture from item images, discard any human elements
+- Apply each item to the correct body part based on its category and layer them properly
+- Preserve the person's face and each clothing item's exact appearance
+- The final person must be exactly the same as the person in the first image
+- Replace existing clothing completely: tops replace tops, bottoms replace bottoms, etc.
+
+Return the result as a base64 encoded image.`;
+
                 const fallbackParts = [
-                    { text: `Generate a virtual try-on image by combining the person from the first image with ALL the clothing items from the outfit (${outfitItems.length} items total). Preserve the person's face and each clothing item's exact appearance. Apply items to appropriate body parts and layer them correctly. Return the result as a base64 encoded image.` },
+                    { text: fallbackPrompt },
                     { 
                         inlineData: { 
                             mimeType: "image/jpeg", 
@@ -356,7 +444,7 @@ Return only the generated image, no text description.`;
                                         <div className="flex items-center space-x-3">
                                             {/* Show multiple items in a grid */}
                                             <div className="grid grid-cols-2 gap-1">
-                                                {outfitItems.slice(0, 4).map((item, index) => (
+                                                {outfitItems.slice(0, 4).map((item) => (
                                                     <img 
                                                         key={item.id}
                                                         src={getImageSource(item)} 

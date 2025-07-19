@@ -4,10 +4,183 @@ import { db, appId, model } from '../firebase/config';
 import Icons from './Icons';
 import Spinner from './Spinner';
 
+// --- Category Mapping System ---
+// Maps AI-detected item types to standardized categories based on body parts
+const CATEGORY_MAPPING = {
+    // Tops - anything worn on the upper body
+    't-shirt': 'Top',
+    'tshirt': 'Top',
+    'shirt': 'Top',
+    'dress shirt': 'Top',
+    'blouse': 'Top',
+    'sweater': 'Top',
+    'hoodie': 'Top',
+    'jacket': 'Top',
+    'cardigan': 'Top',
+    'tank top': 'Top',
+    'polo': 'Top',
+    'henley': 'Top',
+    'turtleneck': 'Top',
+    'crop top': 'Top',
+    'tube top': 'Top',
+    'camisole': 'Top',
+    'bodysuit': 'Top',
+    
+    // Bottoms - anything worn on the lower body
+    'jeans': 'Bottom',
+    'pants': 'Bottom',
+    'trousers': 'Bottom',
+    'shorts': 'Bottom',
+    'skirt': 'Bottom',
+    'leggings': 'Bottom',
+    'joggers': 'Bottom',
+    'chinos': 'Bottom',
+    'khakis': 'Bottom',
+    'dress pants': 'Bottom',
+    'slacks': 'Bottom',
+    'cargo pants': 'Bottom',
+    'sweatpants': 'Bottom',
+    'track pants': 'Bottom',
+    'culottes': 'Bottom',
+    'palazzo pants': 'Bottom',
+    'jeggings': 'Bottom',
+    
+    // Outerwear - worn over other clothes
+    'coat': 'Outerwear',
+    'blazer': 'Outerwear',
+    'suit jacket': 'Outerwear',
+    'bomber jacket': 'Outerwear',
+    'leather jacket': 'Outerwear',
+    'denim jacket': 'Outerwear',
+    'parka': 'Outerwear',
+    'puffer jacket': 'Outerwear',
+    'trench coat': 'Outerwear',
+    'peacoat': 'Outerwear',
+    'windbreaker': 'Outerwear',
+    'vest': 'Outerwear',
+    
+    // Shoes - footwear
+    'sneakers': 'Shoes',
+    'shoes': 'Shoes',
+    'boots': 'Shoes',
+    'heels': 'Shoes',
+    'flats': 'Shoes',
+    'sandals': 'Shoes',
+    'loafers': 'Shoes',
+    'oxfords': 'Shoes',
+    'pumps': 'Shoes',
+    'mules': 'Shoes',
+    'espadrilles': 'Shoes',
+    'sliders': 'Shoes',
+    'slides': 'Shoes',
+    'tennis shoes': 'Shoes',
+    'running shoes': 'Shoes',
+    'athletic shoes': 'Shoes',
+    'dress shoes': 'Shoes',
+    'casual shoes': 'Shoes',
+    
+    // Dresses - one-piece garments
+    'dress': 'Dress',
+    'sundress': 'Dress',
+    'cocktail dress': 'Dress',
+    'evening dress': 'Dress',
+    'maxi dress': 'Dress',
+    'mini dress': 'Dress',
+    'midi dress': 'Dress',
+    'shift dress': 'Dress',
+    'wrap dress': 'Dress',
+    'bodycon dress': 'Dress',
+    'a-line dress': 'Dress',
+    
+    // Accessories - smaller items
+    'hat': 'Accessory',
+    'cap': 'Accessory',
+    'beanie': 'Accessory',
+    'scarf': 'Accessory',
+    'belt': 'Accessory',
+    'bag': 'Accessory',
+    'purse': 'Accessory',
+    'handbag': 'Accessory',
+    'backpack': 'Accessory',
+    'wallet': 'Accessory',
+    'jewelry': 'Accessory',
+    'necklace': 'Accessory',
+    'earrings': 'Accessory',
+    'bracelet': 'Accessory',
+    'watch': 'Accessory',
+    'sunglasses': 'Accessory',
+    'glasses': 'Accessory',
+    'tie': 'Accessory',
+    'bow tie': 'Accessory',
+    'socks': 'Accessory',
+    'stockings': 'Accessory',
+    'tights': 'Accessory',
+};
+
+// Standardized category options
+const CATEGORY_OPTIONS = [
+    'Top',
+    'Bottom', 
+    'Dress',
+    'Outerwear',
+    'Shoes',
+    'Accessory'
+];
+
+// Function to map AI response to standardized category
+function mapToStandardCategory(aiItemType) {
+    if (!aiItemType) return '';
+    
+    const normalizedType = aiItemType.toLowerCase().trim();
+    
+    // Direct match
+    if (CATEGORY_MAPPING[normalizedType]) {
+        return CATEGORY_MAPPING[normalizedType];
+    }
+    
+    // Partial match for variations
+    for (const [key, category] of Object.entries(CATEGORY_MAPPING)) {
+        if (normalizedType.includes(key) || key.includes(normalizedType)) {
+            return category;
+        }
+    }
+    
+    // Default fallback based on common patterns
+    if (normalizedType.includes('shirt') || normalizedType.includes('top') || normalizedType.includes('blouse')) {
+        return 'Top';
+    }
+    if (normalizedType.includes('pant') || normalizedType.includes('jean') || normalizedType.includes('short')) {
+        return 'Bottom';
+    }
+    if (normalizedType.includes('dress')) {
+        return 'Dress';
+    }
+    if (normalizedType.includes('shoe') || normalizedType.includes('boot') || normalizedType.includes('sneaker')) {
+        return 'Shoes';
+    }
+    if (normalizedType.includes('jacket') || normalizedType.includes('coat') || normalizedType.includes('blazer')) {
+        return 'Outerwear';
+    }
+    
+    return ''; // Return empty if no match found
+}
+
+// Function to validate and standardize category from AI response
+function validateAndStandardizeCategory(aiCategory) {
+    if (!aiCategory) return '';
+    
+    const normalizedCategory = aiCategory.trim();
+    
+    // Direct match with standardized categories
+    if (CATEGORY_OPTIONS.includes(normalizedCategory)) {
+        return normalizedCategory;
+    }
+    
+    // Try mapping if it's not a direct match
+    return mapToStandardCategory(aiCategory);
+}
+
 // --- New Helper Function for Parsing AI Response ---
-// This function is used to parse the response from the AI model
-// It removes the code block markers and replaces single quotes with double quotes
-// It then parses the response as JSON
 function parseAIResponse(responseText) {
     // Remove code block markers (``` and ```json)
     let cleaned = responseText.trim()
@@ -74,7 +247,23 @@ const AddItemModal = ({ setShowModal, userId }) => {
 
         try {
             const base64ImageData = await toBase64(file);
-            const prompt = "Analyze this image of a clothing item. Identify the type of clothing (e.g., T-shirt, Jeans, Dress, Sneaker), its primary color, and the material/fabric if visible (e.g., Cotton, Denim, Silk, Polyester, Wool). Respond in JSON format with three keys: 'itemType', 'color', and 'material'. Example: {'itemType': 'T-shirt', 'color': 'Blue', 'material': 'Cotton'}";
+            
+            // Updated prompt to specifically request standardized categories
+            const prompt = `Analyze this image of a clothing item. Identify the type of clothing and categorize it into one of these EXACT categories: Top, Bottom, Dress, Outerwear, Shoes, or Accessory.
+
+IMPORTANT: The category must be exactly one of these 6 options:
+- "Top" (for shirts, t-shirts, blouses, sweaters, tank tops, etc.)
+- "Bottom" (for pants, jeans, shorts, skirts, leggings, etc.)
+- "Dress" (for any one-piece dress)
+- "Outerwear" (for jackets, coats, blazers, etc.)
+- "Shoes" (for any footwear)
+- "Accessory" (for hats, bags, jewelry, belts, etc.)
+
+Also identify the primary color and material/fabric if visible.
+
+Respond in JSON format with these exact keys: 'category', 'color', and 'material'.
+
+Example response: {"category": "Top", "color": "Blue", "material": "Cotton"}`;
             
             const request = {
                 contents: [{
@@ -91,7 +280,14 @@ const AddItemModal = ({ setShowModal, userId }) => {
             const responseText = await result.response.text();
             const parsedJson = parseAIResponse(responseText);
 
-            setCategory(parsedJson.itemType || '');
+            // Validate and standardize the category from AI response
+            const validatedCategory = validateAndStandardizeCategory(parsedJson.category);
+            
+            if (!validatedCategory) {
+                throw new Error("AI could not determine a valid category. Please select manually.");
+            }
+            
+            setCategory(validatedCategory);
             setColor(parsedJson.color || '');
             setMaterial(parsedJson.material || '');
 
@@ -199,14 +395,17 @@ const AddItemModal = ({ setShowModal, userId }) => {
                             placeholder="Item Name (e.g., Blue T-Shirt)"
                             disabled={isLoading}
                         />
-                        <input 
-                            type="text" 
+                        <select 
                             value={category} 
                             onChange={(e) => setCategory(e.target.value)} 
-                            className="block w-full rounded-md border-gray-300 shadow-sm p-2" 
-                            placeholder="Category (e.g., Top)"
+                            className="block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white" 
                             disabled={isLoading}
-                        />
+                        >
+                            <option value="">Select Category</option>
+                            {CATEGORY_OPTIONS.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                        </select>
                         <input 
                             type="text" 
                             value={color} 
