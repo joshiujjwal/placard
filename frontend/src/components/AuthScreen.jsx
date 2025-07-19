@@ -39,7 +39,9 @@ export default function AuthScreen() {
                     {Icons.hanger}
                 </div>
                 <h1 className="text-4xl font-bold text-gray-900">Placard</h1>
-                <p className="mt-2 text-lg text-gray-600">Your AI Wardrobe Assistant</p>
+                <p className="mt-2 text-lg text-gray-600">
+                    Your virtual closet - upload pictures of your clothes, mix and match clothing items to create outfits, and try them on with AI.
+                </p>
                 <div className="mt-8">
                     <button
                         onClick={signInWithGoogle}
