@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
-import { collection, onSnapshot, query, doc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, appId } from '../firebase/config';
 import AddItemModal from './AddItemModal';
 import MyWardrobe from './MyWardrobe';
@@ -15,6 +15,7 @@ export default function MainApp({ user }) {
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [selectedItems, setSelectedItems] = useState([]);
     const [outfitName, setOutfitName] = useState('');
+    const [outfitOccasion, setOutfitOccasion] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -43,6 +44,11 @@ export default function MainApp({ user }) {
         }
     };
 
+    const handleToggleAvailability = async (itemId, isAvailable) => {
+        const itemDocPath = `artifacts/${appId}/users/${user.uid}/items/${itemId}`;
+        await updateDoc(doc(db, itemDocPath), { isAvailable });
+    };
+
     const handleSelectItem = (itemId) => {
         setSelectedItems(prev =>
             prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
@@ -62,8 +68,14 @@ export default function MainApp({ user }) {
             return;
         }
         const outfitsCollectionPath = `artifacts/${appId}/users/${user.uid}/outfits`;
-        await addDoc(collection(db, outfitsCollectionPath), { name: outfitName, itemIds: selectedItems, createdAt: new Date() });
+        await addDoc(collection(db, outfitsCollectionPath), { 
+            name: outfitName, 
+            occasion: outfitOccasion || null,
+            itemIds: selectedItems, 
+            createdAt: new Date() 
+        });
         setOutfitName('');
+        setOutfitOccasion('');
         setSelectedItems([]);
         setIsSelectMode(false);
     };
@@ -91,6 +103,7 @@ export default function MainApp({ user }) {
             selectedItems={selectedItems}
             setSelectedItems={setSelectedItems}
             onDeleteItem={handleDeleteItem}
+            onToggleAvailability={handleToggleAvailability}
             onSelectItem={handleSelectItem}
             onShowModal={() => setShowModal(true)}
         />
@@ -124,7 +137,31 @@ export default function MainApp({ user }) {
                 <footer className="sticky bottom-0 bg-white shadow-lg border-t p-4 z-40">
                     <div className="max-w-7xl mx-auto flex items-center gap-4">
                         <p className="font-semibold">{selectedItems.length} items selected</p>
-                        <input type="text" value={outfitName} onChange={e => setOutfitName(e.target.value)} placeholder="Name your outfit..." className="flex-grow rounded-md border-gray-300 shadow-sm p-2" />
+                        <div className="flex-grow flex gap-2">
+                            <input 
+                                type="text" 
+                                value={outfitName} 
+                                onChange={e => setOutfitName(e.target.value)} 
+                                placeholder="Name your outfit..." 
+                                className="flex-1 rounded-md border-gray-300 shadow-sm p-2" 
+                            />
+                            <select 
+                                value={outfitOccasion} 
+                                onChange={e => setOutfitOccasion(e.target.value)}
+                                className="rounded-md border-gray-300 shadow-sm p-2 bg-white"
+                            >
+                                <option value="">Select occasion...</option>
+                                <option value="casual">Casual</option>
+                                <option value="business">Business</option>
+                                <option value="business-casual">Business Casual</option>
+                                <option value="party">Party</option>
+                                <option value="formal">Formal</option>
+                                <option value="athletic">Athletic</option>
+                                <option value="lounge">Lounge</option>
+                                <option value="date-night">Date Night</option>
+                                <option value="weekend">Weekend</option>
+                            </select>
+                        </div>
                         <button onClick={handleSaveOutfit} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700">Save Outfit</button>
                     </div>
                 </footer>

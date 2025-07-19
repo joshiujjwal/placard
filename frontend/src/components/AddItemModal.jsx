@@ -29,6 +29,9 @@ const AddItemModal = ({ setShowModal, userId }) => {
     const [itemName, setItemName] = useState('');
     const [category, setCategory] = useState('');
     const [color, setColor] = useState('');
+    const [material, setMaterial] = useState('');
+    const [occasion, setOccasion] = useState('');
+    const [isAvailable, setIsAvailable] = useState(true);
     const [imageFile, setImageFile] = useState(null);
     const [preview, setPreview] = useState(null);
     
@@ -66,12 +69,15 @@ const AddItemModal = ({ setShowModal, userId }) => {
         setItemName('');
         setCategory('');
         setColor('');
+        setMaterial('');
+        setOccasion('');
+        setIsAvailable(true);
         setAnalysisError(null);
         setIsAnalyzing(true);
 
         try {
             const base64ImageData = await toBase64(file);
-            const prompt = "Analyze this image of a clothing item. Identify the type of clothing (e.g., T-shirt, Jeans, Dress, Sneaker) and its primary color. Respond in JSON format with two keys: 'itemType' and 'color'. Example: {'itemType': 'T-shirt', 'color': 'Blue'}";
+            const prompt = "Analyze this image of a clothing item. Identify the type of clothing (e.g., T-shirt, Jeans, Dress, Sneaker), its primary color, and the material/fabric if visible (e.g., Cotton, Denim, Silk, Polyester, Wool). Respond in JSON format with three keys: 'itemType', 'color', and 'material'. Example: {'itemType': 'T-shirt', 'color': 'Blue', 'material': 'Cotton'}";
             
             const request = {
                 contents: [{
@@ -90,6 +96,7 @@ const AddItemModal = ({ setShowModal, userId }) => {
 
             setCategory(parsedJson.itemType || '');
             setColor(parsedJson.color || '');
+            setMaterial(parsedJson.material || '');
 
         } catch (err) {
             console.error("Error analyzing image:", err);
@@ -103,7 +110,7 @@ const AddItemModal = ({ setShowModal, userId }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!itemName || !category || !color || !imageFile || !userId) {
-            alert("Please ensure all fields are filled after analysis.");
+            alert("Please ensure all required fields are filled after analysis.");
             return;
         }
         setIsSubmitting(true);
@@ -118,6 +125,9 @@ const AddItemModal = ({ setShowModal, userId }) => {
                 name: itemName,
                 category,
                 color,
+                material: material || null, // Store material as null if empty
+                occasion: occasion || null, // Store occasion as null if empty
+                isAvailable: isAvailable,
                 imageUrl,
                 createdAt: new Date(),
             });
@@ -209,6 +219,53 @@ const AddItemModal = ({ setShowModal, userId }) => {
                             placeholder="Color (e.g., Blue)"
                             disabled={isLoading}
                         />
+                        <input 
+                            type="text" 
+                            value={material} 
+                            onChange={(e) => setMaterial(e.target.value)} 
+                            className="block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                            placeholder="Material (optional, e.g., Cotton, Denim)"
+                            disabled={isLoading}
+                        />
+                        <select 
+                            value={occasion} 
+                            onChange={(e) => setOccasion(e.target.value)}
+                            className="block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white"
+                            disabled={isLoading}
+                        >
+                            <option value="">Occasion (optional)</option>
+                            <option value="casual">Casual</option>
+                            <option value="business">Business</option>
+                            <option value="business-casual">Business Casual</option>
+                            <option value="party">Party</option>
+                            <option value="formal">Formal</option>
+                            <option value="athletic">Athletic</option>
+                            <option value="lounge">Lounge</option>
+                            <option value="date-night">Date Night</option>
+                            <option value="weekend">Weekend</option>
+                        </select>
+                        
+                        {/* Availability Toggle */}
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Item Availability</label>
+                                <p className="text-xs text-gray-500">Mark as unavailable if item is in laundry, damaged, etc.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAvailable(!isAvailable)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                    isAvailable ? 'bg-indigo-600' : 'bg-gray-200'
+                                }`}
+                                disabled={isLoading}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        isAvailable ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex justify-end gap-4 mt-6">

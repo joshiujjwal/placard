@@ -2,7 +2,7 @@ import React from 'react';
 import Icons from './Icons';
 import WardrobeItem from './WardrobeItem';
 
-export default function MyWardrobe({ items, loading, isSelectMode, setIsSelectMode, selectedItems, setSelectedItems, onDeleteItem, onSelectItem, onShowModal }) {
+export default function MyWardrobe({ items, loading, isSelectMode, setIsSelectMode, selectedItems, setSelectedItems, onDeleteItem, onToggleAvailability, onSelectItem, onShowModal }) {
     return (
         <>
             <div className="flex justify-between items-center mb-6">
@@ -14,7 +14,7 @@ export default function MyWardrobe({ items, loading, isSelectMode, setIsSelectMo
             </div>
             {loading ? <p>Loading...</p> : items.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    {items.map(item => <WardrobeItem key={item.id} item={item} onDelete={onDeleteItem} isSelectMode={isSelectMode} onSelectItem={onSelectItem} isSelected={selectedItems.includes(item.id)} />)}
+                    {items.map(item => <WardrobeItem key={item.id} item={item} onDelete={onDeleteItem} onToggleAvailability={onToggleAvailability} isSelectMode={isSelectMode} onSelectItem={onSelectItem} isSelected={selectedItems.includes(item.id)} />)}
                 </div>
             ) : (
                 <div className="text-center py-20 bg-white rounded-lg shadow">
