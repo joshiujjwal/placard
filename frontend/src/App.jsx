@@ -3,7 +3,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase/config';
 import MainApp from './components/MainApp';
 import AuthScreen from './components/AuthScreen';
+import PublicPoll from './pages/PublicPoll';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ToastProvider } from './components/ui/Toast';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -22,23 +25,29 @@ export default function App() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <LoadingSpinner size="lg" />
             </div>
         );
     }
 
     return (
-        <Router>
-            <Routes>
-                <Route 
-                    path="/" 
-                    element={user ? <MainApp user={user} /> : <AuthScreen />} 
-                />
-                <Route 
-                    path="/app" 
-                    element={user ? <MainApp user={user} /> : <AuthScreen />} 
-                />
-            </Routes>
-        </Router>
+        <ToastProvider>
+            <Router>
+                <Routes>
+                    <Route
+                        path="/"
+                        element={user ? <MainApp user={user} /> : <AuthScreen />}
+                    />
+                    <Route
+                        path="/app"
+                        element={user ? <MainApp user={user} /> : <AuthScreen />}
+                    />
+                    <Route
+                        path="/poll/:shareId"
+                        element={<PublicPoll />}
+                    />
+                </Routes>
+            </Router>
+        </ToastProvider>
     );
 }
