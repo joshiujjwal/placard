@@ -29,9 +29,18 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 
 // Initialize the Gemini Developer API backend service
 const ai = getAI(app, { backend: new GoogleAIBackend() });
+// 1. Specialized Model for Image Generation & High-Fidelity Editing (Nano Banana)
+// This model supports specific "image-to-image" tasks and character consistency.
+export const model = getGenerativeModel(ai, { 
+  model: "gemini-2.5-flash-image" 
+});
 
-// Create a `GenerativeModel` instance with a model that supports your use case
-export const model = getGenerativeModel(ai, { model: "gemini-2.0-flash-exp-image-generation" }); // Use image generation model for virtual try-on
+// 2. Vision & Reasoning Model
+export const visionModel = getGenerativeModel(ai, {
+  model: "gemini-2.5-flash"
+});
 
-// Fallback model for regular vision tasks (if image generation model is not available)
-export const visionModel = getGenerativeModel(ai, { model: "gemini-1.5-flash" });
+// 3. Recommended: Dedicated Virtual Try-On API (Vertex AI)
+// If your project supports Vertex AI endpoints, use the purpose-built VTO model
+// which accepts separate 'personImage' and 'productImage' inputs.
+export const vtoModel = "virtual-try-on-preview-08-04";
